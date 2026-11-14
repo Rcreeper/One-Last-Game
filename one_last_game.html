@@ -1,0 +1,2598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ONE LAST GAME</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=VT323&display=swap');
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  html, body {
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background-color: #03060f;
+    font-family: 'VT323', monospace;
+    color: #dbe7ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Retro Windows PC Window Frame / Viewport Container */
+  #game-shell {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #050914;
+    border: 2px solid #162647;
+    box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.95);
+  }
+
+  /* Classic Dark Navy Windows Title Bar */
+  #win-titlebar {
+    height: 32px;
+    min-height: 32px;
+    background: linear-gradient(90deg, #070e21 0%, #12244a 50%, #070e21 100%);
+    border-bottom: 2px solid #1d3566;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    font-family: 'Silkscreen', monospace;
+    font-size: 13px;
+    letter-spacing: 1px;
+    color: #b4cbff;
+    z-index: 30;
+  }
+
+  .title-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .title-dot {
+    width: 9px;
+    height: 9px;
+    background: #c93b4b;
+    box-shadow: 0 0 6px #c93b4b;
+    display: inline-block;
+  }
+
+  .title-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .win-btn {
+    background: #0c1733;
+    border: 1px solid #294680;
+    color: #d6e4ff;
+    font-family: 'Silkscreen', monospace;
+    font-size: 11px;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+
+  .win-btn:hover {
+    background: #1a3166;
+    border-color: #5b87e0;
+    color: #ffffff;
+  }
+
+  .win-btn.active-practice {
+    background: #1b3b2b;
+    border-color: #3da873;
+    color: #8cf5be;
+  }
+
+  /* Canvas Stage */
+  #stage-container {
+    position: relative;
+    flex: 1;
+    width: 100%;
+    height: calc(100vh - 32px);
+    overflow: hidden;
+    background: #040812;
+  }
+
+  canvas#gameCanvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    display: block;
+  }
+
+  /* Subtle CRT Scanline & Vignette Overlay */
+  #crt-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 50% 48%, rgba(0,0,0,0) 42%, rgba(1,3,9,0.78) 100%),
+      repeating-linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0.01) 0px,
+        rgba(255, 255, 255, 0.01) 1px,
+        rgba(0, 0, 0, 0.12) 2px,
+        rgba(0, 0, 0, 0.12) 3px
+      );
+    z-index: 10;
+  }
+
+  /* Interactive UI Overlay Layer */
+  #ui-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .interactive {
+    pointer-events: auto;
+  }
+
+  /* Top HUD Bar */
+  #top-hud {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 10px 16px;
+    gap: 12px;
+  }
+
+  .hud-panel {
+    background: rgba(6, 12, 28, 0.9);
+    border: 2px solid #244078;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.75);
+    padding: 8px 14px;
+    border-radius: 4px;
+  }
+
+  .hud-label {
+    font-family: 'Silkscreen', monospace;
+    font-size: 11px;
+    color: #84a4e3;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .hud-value {
+    font-family: 'Silkscreen', monospace;
+    font-size: 18px;
+    color: #eef4ff;
+    margin-top: 3px;
+  }
+
+  .hud-value.gold {
+    color: #f2c96b;
+    text-shadow: 0 0 8px rgba(242, 201, 107, 0.35);
+  }
+
+  .hud-value.practice-tag {
+    color: #63e6a4;
+  }
+
+  /* Practice Advisor Banner */
+  #practice-advisor {
+    position: absolute;
+    top: 72px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(7, 22, 18, 0.95);
+    border: 2px solid #2e855c;
+    color: #c9fae0;
+    padding: 8px 16px;
+    border-radius: 5px;
+    font-size: 20px;
+    max-width: 92vw;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.85);
+    display: none;
+    z-index: 22;
+  }
+
+  #practice-advisor strong {
+    font-family: 'Silkscreen', monospace;
+    font-size: 11px;
+    color: #5ef2ab;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  /* High-Contrast Go Fish Table Stage Overlay */
+  #gofish-table-stage {
+    position: absolute;
+    top: 49%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(920px, 96vw);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    pointer-events: none;
+    z-index: 18;
+  }
+
+  .top-table-row {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr) 150px;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  @media (max-width: 820px) {
+    .top-table-row {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  .hand-zone {
+    background: rgba(5, 13, 28, 0.84);
+    border: 2px solid rgba(64, 106, 179, 0.55);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.78);
+    transition: border-color 0.25s, box-shadow 0.25s, transform 0.25s, opacity 0.25s;
+  }
+
+  .hand-zone.opponent-seat {
+    cursor: pointer;
+    pointer-events: auto;
+  }
+
+  .hand-zone.opponent-seat:hover {
+    border-color: #78a6ff;
+    transform: translateY(-2px);
+  }
+
+  .hand-zone.opponent-seat.selected-target {
+    border-color: #f5c356;
+    background: rgba(34, 26, 10, 0.9);
+    box-shadow: 0 0 22px rgba(245, 195, 86, 0.5);
+  }
+
+  .hand-zone.opponent-seat.active-speaker {
+    border-color: #63e6a4;
+    box-shadow: 0 0 24px rgba(99, 230, 164, 0.45);
+  }
+
+  .hand-zone.pond-box {
+    justify-content: center;
+    background: rgba(8, 19, 38, 0.88);
+    border-color: #3d63a8;
+  }
+
+  .hand-zone.player-box {
+    width: 100%;
+    pointer-events: auto;
+    padding: 14px 18px;
+  }
+
+  .hand-zone.player-box.closed-window {
+    display: none;
+  }
+
+  .opponent-turn-spotlight {
+    width: 100%;
+    background: rgba(5, 11, 24, 0.94);
+    border: 2px solid #4e7ad1;
+    border-radius: 10px;
+    padding: 20px 24px;
+    text-align: center;
+    box-shadow: 0 10px 36px rgba(0, 0, 0, 0.92);
+    display: none;
+  }
+
+  .opponent-turn-spotlight.visible {
+    display: block;
+  }
+
+  .spotlight-actor {
+    font-family: 'Silkscreen', monospace;
+    font-size: clamp(14px, 2vw, 18px);
+    color: #f5c356;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+
+  .spotlight-story {
+    font-family: 'VT323', monospace;
+    font-size: clamp(24px, 3.4vw, 32px);
+    color: #eef5ff;
+    line-height: 1.25;
+  }
+
+  .spotlight-tip {
+    font-family: 'VT323', monospace;
+    font-size: 20px;
+    color: #96b7f0;
+    margin-top: 8px;
+  }
+
+  .hand-zone.winner-glow {
+    border-color: #f5c356;
+    box-shadow: 0 0 28px rgba(245, 195, 86, 0.45), inset 0 0 18px rgba(245, 195, 86, 0.16);
+  }
+
+  .hand-zone-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid rgba(82, 128, 207, 0.4);
+  }
+
+  .zone-title {
+    font-family: 'Silkscreen', monospace;
+    font-size: clamp(12px, 1.6vw, 15px);
+    letter-spacing: 0.8px;
+    color: #e3edff;
+  }
+
+  .zone-title.player-accent {
+    color: #7cc0ff;
+    font-size: clamp(14px, 1.9vw, 17px);
+  }
+
+  .zone-title.banker-accent {
+    color: #ff9aa8;
+  }
+
+  .opp-meta {
+    font-family: 'VT323', monospace;
+    font-size: 20px;
+    color: #c2d6fa;
+    margin-top: 4px;
+  }
+
+  .score-pill {
+    font-family: 'Silkscreen', monospace;
+    font-size: clamp(12px, 1.6vw, 14px);
+    font-weight: 700;
+    padding: 4px 9px;
+    border-radius: 4px;
+    background: #0b1833;
+    border: 2px solid #416bb8;
+    color: #ffffff;
+    text-align: center;
+  }
+
+  .score-pill.natural {
+    background: #3d2c08;
+    border-color: #f5c356;
+    color: #ffe39e;
+  }
+
+  .pond-count-big {
+    font-family: 'Silkscreen', monospace;
+    font-size: 30px;
+    font-weight: 700;
+    color: #f2c96b;
+    line-height: 1.1;
+  }
+
+  .pond-sub {
+    font-family: 'Silkscreen', monospace;
+    font-size: 11px;
+    color: #9cb8eb;
+    margin-top: 4px;
+  }
+
+  .cards-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    min-height: 108px;
+  }
+
+  /* Crisp, Ultra-Legible Interactive Playing Cards */
+  .playing-card {
+    width: clamp(74px, 9.2vw, 90px);
+    height: clamp(104px, 13vw, 126px);
+    background: #ffffff;
+    border: 3px solid #16233d;
+    border-radius: 7px;
+    box-shadow: 0 7px 18px rgba(0, 0, 0, 0.9);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 6px 8px;
+    color: #0b1324;
+    cursor: pointer;
+    transition: transform 0.14s, border-color 0.14s, box-shadow 0.14s;
+    animation: cardDealPop 0.24s cubic-bezier(0.2, 0.9, 0.3, 1.1) forwards;
+  }
+
+  .playing-card:hover {
+    transform: translateY(-6px);
+    border-color: #4da3ff;
+  }
+
+  .playing-card.selected-rank {
+    transform: translateY(-11px);
+    border-color: #f5c356;
+    box-shadow: 0 0 22px rgba(245, 195, 86, 0.85);
+    background: #fff9db;
+  }
+
+  .playing-card.red {
+    color: #c9142c;
+  }
+
+  .card-corner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1;
+    width: fit-content;
+  }
+
+  .card-corner.bottom {
+    align-self: flex-end;
+    transform: rotate(180deg);
+  }
+
+  .card-rank {
+    font-family: 'Silkscreen', monospace;
+    font-size: clamp(18px, 2.4vw, 23px);
+    font-weight: 700;
+  }
+
+  .card-suit-small {
+    font-size: clamp(16px, 2vw, 20px);
+    margin-top: 1px;
+  }
+
+  .card-center-suit {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: clamp(32px, 4.2vw, 42px);
+    line-height: 1;
+    opacity: 0.95;
+  }
+
+  .card-count-badge {
+    position: absolute;
+    bottom: 5px;
+    left: 6px;
+    background: #102142;
+    color: #ffe39e;
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px;
+    padding: 2px 5px;
+    border-radius: 3px;
+  }
+
+  /* Bottom Action Controls Dock — Larger & Easier to Read */
+  #bottom-dock {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 12px 12px 12px;
+    gap: 8px;
+  }
+
+  #hand-status-bar {
+    background: rgba(4, 9, 22, 0.96);
+    border: 2px solid #3f6bc2;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-family: 'VT323', monospace;
+    font-size: clamp(22px, 2.8vw, 28px);
+    color: #f2f7ff;
+    letter-spacing: 0.4px;
+    text-align: center;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 96vw;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.85);
+  }
+
+  #action-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    background: rgba(4, 8, 20, 0.96);
+    border: 2px solid #2a4c8c;
+    padding: 12px 16px;
+    border-radius: 6px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.9);
+    max-width: 96vw;
+  }
+
+  .turn-step-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .step-tag {
+    font-family: 'Silkscreen', monospace;
+    font-size: 12px;
+    color: #9ec0ff;
+    margin-right: 4px;
+  }
+
+  .target-pick-btn {
+    font-family: 'Silkscreen', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 10px 14px;
+    border-radius: 5px;
+    cursor: pointer;
+    border: 2px solid #355ba3;
+    background: #0d1b3b;
+    color: #dce8ff;
+    transition: all 0.12s;
+  }
+
+  .target-pick-btn:hover:not(:disabled) {
+    background: #1a3570;
+    border-color: #78a6ff;
+  }
+
+  .target-pick-btn.active-pick {
+    border-color: #63e6a4;
+    background: linear-gradient(180deg, #164732 0%, #0b261a 100%);
+    color: #b8ffdc;
+    box-shadow: 0 0 12px rgba(99, 230, 164, 0.4);
+  }
+
+  .rank-buttons-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .rank-ask-btn {
+    font-family: 'Silkscreen', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 11px 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    border: 2px solid #355ba3;
+    background: #0d1b3b;
+    color: #dce8ff;
+    min-width: 56px;
+    transition: all 0.12s;
+  }
+
+  .rank-ask-btn:hover:not(:disabled) {
+    background: #1a3570;
+    border-color: #78a6ff;
+    transform: translateY(-2px);
+  }
+
+  .rank-ask-btn.active-pick {
+    border-color: #f5c356;
+    background: linear-gradient(180deg, #5c4312 0%, #332408 100%);
+    color: #ffe8a8;
+    box-shadow: 0 0 14px rgba(245, 195, 86, 0.45);
+  }
+
+  .chips-and-deal-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .poker-btn {
+    font-family: 'Silkscreen', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 12px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    border: 2px solid #365ca6;
+    background: linear-gradient(180deg, #162b57 0%, #0b1733 100%);
+    color: #f0f5ff;
+    transition: transform 0.08s, background 0.12s, border-color 0.12s;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+
+  .poker-btn:hover:not(:disabled) {
+    background: linear-gradient(180deg, #214080 0%, #12244d 100%);
+    border-color: #7aa5fa;
+    transform: translateY(-1px);
+  }
+
+  .poker-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .poker-btn.danger {
+    border-color: #8f2d3c;
+    background: linear-gradient(180deg, #47151d 0%, #260a0f 100%);
+    color: #ffc2cb;
+  }
+
+  .poker-btn.primary {
+    border-color: #cca03b;
+    background: linear-gradient(180deg, #594314 0%, #332509 100%);
+    color: #ffeaad;
+  }
+
+  .poker-btn.primary:hover:not(:disabled) {
+    border-color: #ffd166;
+    background: linear-gradient(180deg, #785a1b 0%, #47340d 100%);
+  }
+
+  .chip-preset {
+    font-family: 'Silkscreen', monospace;
+    font-size: 13px;
+    padding: 10px 13px;
+    background: #0e1c3b;
+    border: 2px solid #335599;
+    color: #cde0ff;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+
+  .chip-preset:hover:not(:disabled) {
+    background: #1c366e;
+    border-color: #7aa5fa;
+    color: #fff;
+  }
+
+  .chip-preset:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  /* Modal & Fullscreen Overlays (Title, Rules, Between-Round, Ending) */
+  .overlay-screen {
+    position: absolute;
+    inset: 0;
+    z-index: 25;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 50% 42%, rgba(8, 16, 36, 0.76) 0%, rgba(3, 6, 15, 0.94) 100%);
+    padding: 20px;
+    text-align: center;
+  }
+
+  .hidden {
+    display: none !important;
+  }
+
+  .game-logo {
+    font-family: 'Silkscreen', monospace;
+    font-size: clamp(28px, 5vw, 54px);
+    font-weight: 700;
+    color: #eef4ff;
+    letter-spacing: 4px;
+    text-shadow:
+      0 3px 0 #142852,
+      0 0 24px rgba(84, 138, 247, 0.45);
+    margin-bottom: 6px;
+  }
+
+  .game-subtitle {
+    font-family: 'Silkscreen', monospace;
+    font-size: clamp(10px, 1.5vw, 13px);
+    color: #7898d4;
+    letter-spacing: 3px;
+    margin-bottom: 28px;
+  }
+
+  .menu-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: min(390px, 90vw);
+  }
+
+  .menu-btn {
+    font-family: 'Silkscreen', monospace;
+    font-size: 15px;
+    padding: 15px 20px;
+    background: rgba(10, 20, 44, 0.94);
+    border: 2px solid #3358a1;
+    color: #e6efff;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.14s;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.65);
+  }
+
+  .menu-btn:hover {
+    background: #172e61;
+    border-color: #75a3ff;
+    color: #ffffff;
+    transform: translateY(-2px);
+  }
+
+  .menu-btn.featured {
+    border-color: #c49435;
+    background: linear-gradient(180deg, rgba(56, 41, 12, 0.92) 0%, rgba(28, 20, 6, 0.95) 100%);
+    color: #ffe39e;
+  }
+
+  .menu-btn.featured:hover {
+    border-color: #ffd166;
+    background: linear-gradient(180deg, rgba(84, 62, 18, 0.95) 0%, rgba(43, 31, 9, 0.98) 100%);
+  }
+
+  /* Rules Modal */
+  .modal-card {
+    background: #070e21;
+    border: 2px solid #284785;
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.92);
+    width: min(860px, 94vw);
+    max-height: 84vh;
+    display: flex;
+    flex-direction: column;
+    border-radius: 4px;
+    overflow: hidden;
+    text-align: left;
+  }
+
+  .modal-header {
+    background: #0d1a3b;
+    border-bottom: 2px solid #223d73;
+    padding: 12px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .modal-header h2 {
+    font-family: 'Silkscreen', monospace;
+    font-size: 17px;
+    color: #f2c96b;
+  }
+
+  .modal-body {
+    padding: 18px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: 1fr 1.15fr;
+    gap: 20px;
+    font-size: 21px;
+    line-height: 1.4;
+    color: #d6e4ff;
+  }
+
+  .modal-body {
+    padding: 16px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: 1fr 1.15fr;
+    gap: 18px;
+    font-size: 18px;
+    line-height: 1.35;
+    color: #c9d9f8;
+  }
+
+  @media (max-width: 720px) {
+    .modal-body {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .rules-section h3 {
+    font-family: 'Silkscreen', monospace;
+    font-size: 13px;
+    color: #8cb2ff;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #1b315e;
+    padding-bottom: 5px;
+  }
+
+  .rules-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .rules-list li::before {
+    content: "▸ ";
+    color: #f2c96b;
+  }
+
+  .rank-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #0b1530;
+    border: 1px solid #1b305c;
+    padding: 5px 8px;
+    margin-bottom: 5px;
+    border-radius: 3px;
+    gap: 8px;
+  }
+
+  .rank-name {
+    font-family: 'Silkscreen', monospace;
+    font-size: 12px;
+    color: #eef4ff;
+  }
+
+  .rank-desc {
+    font-size: 17px;
+    color: #9cb6e8;
+  }
+
+  .mini-cards {
+    display: flex;
+    gap: 4px;
+  }
+
+  .mini-card {
+    background: #eef3fc;
+    color: #0b1326;
+    font-family: 'Silkscreen', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 6px;
+    border-radius: 3px;
+    border: 1px solid #7889ab;
+    min-width: 28px;
+    text-align: center;
+  }
+
+  .mini-card.red {
+    color: #b81d33;
+  }
+
+  /* Between-Round & Cash-Out Dialog */
+  .decision-box {
+    background: rgba(7, 13, 31, 0.94);
+    border: 2px solid #2b4a87;
+    padding: 22px 26px;
+    border-radius: 4px;
+    max-width: 460px;
+    width: 90vw;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9);
+  }
+
+  .decision-title {
+    font-family: 'Silkscreen', monospace;
+    font-size: 18px;
+    color: #f2c96b;
+    margin-bottom: 10px;
+  }
+
+  .decision-text {
+    font-size: 22px;
+    color: #d9e6ff;
+    margin-bottom: 20px;
+    line-height: 1.35;
+  }
+
+  .decision-text {
+    font-size: 20px;
+    color: #cbd9f5;
+    margin-bottom: 18px;
+    line-height: 1.3;
+  }
+
+  .decision-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+  }
+
+  /* Skip Intro Prompt */
+  #skip-intro-btn {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    z-index: 28;
+    font-family: 'Silkscreen', monospace;
+    font-size: 10px;
+    padding: 7px 12px;
+    background: rgba(8, 15, 34, 0.85);
+    border: 1px solid #35589c;
+    color: #a8c3f7;
+    cursor: pointer;
+  }
+
+  #skip-intro-btn:hover {
+    background: #162b59;
+    color: #fff;
+  }
+
+  /* Dark Cinematic Ending Overlay */
+  #ending-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 26;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding-bottom: 44px;
+    pointer-events: none;
+  }
+
+  #ending-caption {
+    background: rgba(4, 7, 16, 0.88);
+    border: 1px solid #4a1c24;
+    padding: 14px 24px;
+    max-width: 560px;
+    width: 90vw;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 1.2s ease;
+    pointer-events: auto;
+  }
+
+  #ending-caption.visible {
+    opacity: 1;
+  }
+
+  #ending-caption h2 {
+    font-family: 'Silkscreen', monospace;
+    font-size: 20px;
+    color: #d9485d;
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+
+  #ending-caption p {
+    font-size: 22px;
+    color: #d1dcf2;
+    margin-bottom: 18px;
+  }
+</style>
+</head>
+<body>
+
+<div id="game-shell">
+  <!-- Classic Windows PC Noir Title Bar -->
+  <div id="win-titlebar">
+    <div class="title-left">
+      <span class="title-dot"></span>
+      <span>ONE_LAST_GAME.EXE — HIGH STAKES GO FISH</span>
+    </div>
+    <div class="title-controls">
+      <button id="btn-audio-toggle" class="win-btn" title="Toggle Audio">SOUND: ON</button>
+      <button id="btn-hud-practice" class="win-btn" title="Toggle Practice Mode">PRACTICE</button>
+      <button id="btn-hud-rules" class="win-btn" title="Rules & Examples">RULES</button>
+      <button id="btn-hud-menu" class="win-btn" title="Return to Title">MENU</button>
+    </div>
+  </div>
+
+  <!-- Main Viewport Stage -->
+  <div id="stage-container">
+    <canvas id="gameCanvas"></canvas>
+    <div id="crt-overlay"></div>
+
+    <!-- Live Gameplay HUD -->
+    <div id="ui-layer" class="hidden">
+      <div id="top-hud">
+        <div class="hud-panel">
+          <div class="hud-label" id="bankroll-label">YOUR BANKROLL</div>
+          <div class="hud-value gold" id="hud-bankroll">$1,000,000</div>
+        </div>
+
+        <div class="hud-panel" style="text-align:center;">
+          <div class="hud-label" id="round-label">MATCH #1 • GO FISH</div>
+          <div class="hud-value" id="hud-pot">STAKES: $100,000</div>
+        </div>
+
+        <div class="hud-panel" style="text-align:right;">
+          <div class="hud-label">BOOKS SCORE (4 OF A KIND)</div>
+          <div class="hud-value" id="hud-tocall">YOU 0 — 0 DEALER</div>
+        </div>
+      </div>
+
+      <!-- Practice Mode Tactical Advisor -->
+      <div id="practice-advisor">
+        <strong>PRACTICE ADVISOR (NO RISK TO BANKROLL)</strong>
+        <span id="practice-advice-text">Click a card rank you hold, then press ASK DEALER FOR RANK.</span>
+      </div>
+
+      <!-- Ultra-Clear High-Contrast Go Fish Table Stage -->
+      <div id="gofish-table-stage">
+        <div class="top-table-row" id="opponents-top-row">
+          <!-- Opponent seats populated dynamically -->
+        </div>
+
+        <!-- Opponent Turn Spotlight (shown when your hand window closes during others' turns) -->
+        <div class="opponent-turn-spotlight" id="opponent-turn-spotlight">
+          <div class="spotlight-actor" id="spotlight-actor">CROW'S TURN</div>
+          <div class="spotlight-story" id="spotlight-story">Crow leans across the felt and asks Owl for any 7s...</div>
+          <div class="spotlight-tip" id="spotlight-tip">Your hand is hidden while other players take their turns.</div>
+        </div>
+
+        <div class="hand-zone player-box" id="player-hand-zone">
+          <div class="hand-zone-header">
+            <span class="zone-title player-accent">YOUR HAND — CLICK A CARD (OR NUMBER BELOW) TO PICK WHAT TO ASK FOR</span>
+            <span class="score-pill natural" id="player-books-pill">YOUR BOOKS: 0</span>
+          </div>
+          <div class="cards-row" id="player-cards-row"></div>
+        </div>
+      </div>
+
+      <!-- Bottom Controls Dock -->
+      <div id="bottom-dock">
+        <div id="hand-status-bar">
+          <span id="player-hand-rank">SET YOUR MATCH STAKES & START MATCH</span>
+        </div>
+
+        <div id="action-bar" class="interactive">
+          <!-- Pre-match wager bar -->
+          <div class="chips-and-deal-row" id="wager-controls-row">
+            <button class="chip-preset" data-add="25000">+$25K</button>
+            <button class="chip-preset" data-add="50000">+$50K</button>
+            <button class="chip-preset" data-add="100000">+$100K</button>
+            <button class="chip-preset" data-preset="allin">ALL-IN</button>
+            <button id="btn-clear-bet" class="chip-preset">MIN ($25K)</button>
+            <button id="btn-start-match" class="poker-btn primary">DEAL GO FISH ($100,000)</button>
+          </div>
+
+          <!-- Active turn target + rank ask bar -->
+          <div class="rank-buttons-row hidden" id="turn-controls-row"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Skip Intro Button -->
+    <button id="skip-intro-btn" class="hidden">SKIP INTRO [SPACE]</button>
+
+    <!-- Title Screen Overlay -->
+    <div id="title-screen" class="overlay-screen">
+      <div class="game-logo">ONE LAST GAME</div>
+      <div class="game-subtitle">NOIR GO FISH • HIGH-STAKES PARLOR</div>
+
+      <div class="menu-stack">
+        <button id="btn-start-game" class="menu-btn featured">ENTER THE PARLOR ($1,000,000)</button>
+        <button id="btn-start-practice" class="menu-btn">PRACTICE MATCH (ZERO RISK)</button>
+        <button id="btn-open-rules" class="menu-btn">HOW TO PLAY GO FISH</button>
+      </div>
+    </div>
+
+    <!-- Rules Modal -->
+    <div id="rules-modal" class="overlay-screen hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2>EASY GO FISH RULES</h2>
+          <button id="btn-close-rules" class="win-btn">CLOSE [ESC]</button>
+        </div>
+        <div class="modal-body">
+          <div class="rules-section">
+            <h3>HOW TO WIN IN 4 SIMPLE STEPS</h3>
+            <ul class="rules-list">
+              <li><strong>1. SET STAKES & DEAL:</strong> Choose your match wager and receive <strong>5 cards</strong> (the Wolf Dealer also gets 5).</li>
+              <li><strong>2. ASK FOR A RANK:</strong> Pick any rank already in your hand (e.g., <strong>7s</strong> or <strong>Kings</strong>) and ask the Wolf Dealer for it.</li>
+              <li><strong>3. TAKE CARDS OR "GO FISH":</strong> If the Dealer has that rank, you take all of them and go again! If not, you draw 1 card from <strong>The Pond</strong>.</li>
+              <li><strong>4. COLLECT BOOKS (4 OF A KIND):</strong> Whenever you get all <strong>4 cards of the same rank</strong>, they automatically score as a <strong>Book</strong>. Most Books when all 13 are completed wins the pot!</li>
+            </ul>
+          </div>
+
+          <div class="rules-section">
+            <h3>EXAMPLES OF BOOKS & TURNS</h3>
+            <div id="rankings-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Between-Round Choice Overlay -->
+    <div id="between-round-modal" class="overlay-screen hidden" style="background: rgba(3, 6, 15, 0.68);">
+      <div class="decision-box">
+        <div class="decision-title" id="round-summary-title">MATCH COMPLETE</div>
+        <div class="decision-text" id="round-summary-text">You sit at $1,000,000. The dealer awaits your nod.</div>
+        <div class="decision-actions">
+          <button id="btn-next-hand" class="poker-btn primary">PLAY ANOTHER MATCH</button>
+          <button id="btn-cash-out" class="poker-btn">CASH OUT & LEAVE TABLE</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cash Out / Departure Summary Screen -->
+    <div id="cashout-screen" class="overlay-screen hidden">
+      <div class="decision-box" style="max-width: 520px;">
+        <div class="decision-title" id="cashout-title">YOU WALKED AWAY</div>
+        <div class="decision-text" id="cashout-summary">
+          You push your chair back from the table and step out into the cold navy rain.
+        </div>
+        <div class="decision-actions">
+          <button id="btn-play-again-cashout" class="poker-btn primary">RETURN TO TABLE ($1,000,000)</button>
+          <button id="btn-title-cashout" class="poker-btn">MAIN MENU</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dark Cinematic Game Over Ending -->
+    <div id="ending-overlay" class="hidden">
+      <div id="ending-caption">
+        <h2>THE HOUSE COLLECTS</h2>
+        <p id="ending-text">Your stack is empty. The wolf dealer calmly reaches inside his dark coat and lays cold steel upon the felt. One last game—and you lost.</p>
+        <button id="btn-restart-ending" class="poker-btn danger">PLAY AGAIN ($1,000,000)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/**
+ * ============================================================================
+ * ONE LAST GAME — COMPLETE SINGLE-FILE NOIR GO FISH ENGINE
+ * ============================================================================
+ */
+(() => {
+  'use strict';
+
+  // ==========================================================================
+  // 1. WEB AUDIO & SOUND HELPER
+  // ==========================================================================
+  class NoirAudioEngine {
+    constructor() {
+      this.ctx = null;
+      this.muted = false;
+      this.ambientOsc1 = null;
+      this.ambientOsc2 = null;
+      this.ambientGain = null;
+    }
+
+    resume() {
+      if (!this.ctx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) {
+          this.ctx = new AudioContext();
+          this.initAmbientDrone();
+        }
+      }
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume();
+      }
+    }
+
+    initAmbientDrone() {
+      try {
+        if (!this.ctx) return;
+        this.ambientGain = this.ctx.createGain();
+        this.ambientGain.gain.value = this.muted ? 0 : 0.025;
+        this.ambientGain.connect(this.ctx.destination);
+
+        // Low mysterious dark jazz room hum
+        this.ambientOsc1 = this.ctx.createOscillator();
+        this.ambientOsc1.type = 'sine';
+        this.ambientOsc1.frequency.value = 58.27; // Bb1
+
+        this.ambientOsc2 = this.ctx.createOscillator();
+        this.ambientOsc2.type = 'triangle';
+        this.ambientOsc2.frequency.value = 87.31; // F2
+
+        this.ambientOsc1.connect(this.ambientGain);
+        this.ambientOsc2.connect(this.ambientGain);
+
+        this.ambientOsc1.start();
+        this.ambientOsc2.start();
+      } catch (e) {
+        console.warn('Audio context init note:', e);
+      }
+    }
+
+    toggleMute() {
+      this.muted = !this.muted;
+      if (this.ambientGain && this.ctx) {
+        this.ambientGain.gain.setTargetAtTime(this.muted ? 0 : 0.025, this.ctx.currentTime, 0.05);
+      }
+      return !this.muted;
+    }
+
+    playCardSnap(pitchMult = 1.0) {
+      if (this.muted || !this.ctx) return;
+      try {
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(220 * pitchMult, now);
+        osc.frequency.exponentialRampToValueAtTime(75 * pitchMult, now + 0.05);
+
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.06);
+      } catch (e) {}
+    }
+
+    playChipClink(count = 1) {
+      if (this.muted || !this.ctx) return;
+      try {
+        for (let i = 0; i < count; i++) {
+          const now = this.ctx.currentTime + i * 0.045;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(1200 + Math.random() * 400, now);
+
+          gain.gain.setValueAtTime(0.06, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.035);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.04);
+        }
+      } catch (e) {}
+    }
+
+    playMetallicClick() {
+      if (this.muted || !this.ctx) return;
+      try {
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(450, now);
+        osc.frequency.setValueAtTime(180, now + 0.02);
+
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.09);
+      } catch (e) {}
+    }
+
+    triggerDarkEndingAudio() {
+      if (this.muted || !this.ctx) return;
+      try {
+        const now = this.ctx.currentTime;
+        if (this.ambientGain) {
+          this.ambientGain.gain.setValueAtTime(0.08, now);
+        }
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(52, now);
+        osc.frequency.linearRampToValueAtTime(32, now + 2.5);
+
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 2.8);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 2.9);
+      } catch (e) {}
+    }
+
+    restoreMusic() {
+      if (this.ctx && this.ambientGain && !this.muted) {
+        this.ambientGain.gain.setTargetAtTime(0.025, this.ctx.currentTime, 0.1);
+      }
+    }
+  }
+
+  const audio = new NoirAudioEngine();
+
+  // ==========================================================================
+  // 2. GO FISH CARD & DECK CONSTANTS
+  // ==========================================================================
+  const SUITS = ['S', 'H', 'D', 'C'];
+  const SUIT_SYMBOLS = { S: '♠', H: '♥', D: '♦', C: '♣' };
+  const RANK_NAMES = { 2: '2', 3: '3', 4: '4', 5: '5', 6: '6', 7: '7', 8: '8', 9: '9', 10: '10', 11: 'J', 12: 'Q', 13: 'K', 14: 'A' };
+  const RANK_PLURALS = { 2: '2s', 3: '3s', 4: '4s', 5: '5s', 6: '6s', 7: '7s', 8: '8s', 9: '9s', 10: '10s', 11: 'Jacks', 12: 'Queens', 13: 'Kings', 14: 'Aces' };
+
+  function createShuffledDeck() {
+    const deck = [];
+    for (const suit of SUITS) {
+      for (let rank = 2; rank <= 14; rank++) {
+        deck.push({ rank, suit, label: RANK_NAMES[rank] });
+      }
+    }
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    return deck;
+  }
+
+  function sortHand(hand) {
+    hand.sort((a, b) => a.rank - b.rank || a.suit.localeCompare(b.suit));
+  }
+
+  // ==========================================================================
+  // 3. GAME STATE & 5-PLAYER PARLOR CHARACTERS (SPACED OUT & IN SHADOW)
+  // ==========================================================================
+  const INITIAL_BANKROLL = 1000000;
+  const MIN_BET = 25000;
+
+  const PARLOR_PLAYERS = [
+    { id: 'owl',    name: 'OWL',    fullName: 'VESPER THE OWL',    seatX: 92,  seatY: 112, lookDir: 1,  blinkTimer: 2.1, isBlinking: false },
+    { id: 'boar',   name: 'BOAR',   fullName: 'MIDAS THE BOAR',    seatX: 215, seatY: 90,  lookDir: 1,  blinkTimer: 3.4, isBlinking: false },
+    { id: 'dealer', name: 'DEALER', fullName: 'THE WOLF DEALER',   seatX: 418, seatY: 88,  lookDir: -1, blinkTimer: 2.5, isBlinking: false },
+    { id: 'crow',   name: 'CROW',   fullName: 'SILAS THE CROW',    seatX: 548, seatY: 112, lookDir: -1, blinkTimer: 1.7, isBlinking: false }
+  ];
+
+  const state = {
+    screen: 'TITLE',
+    practiceMode: false,
+    bankroll: INITIAL_BANKROLL,
+    practiceBankroll: INITIAL_BANKROLL,
+    matchNumber: 0,
+    wagerAmount: 100000,
+    phase: 'WAGERING',
+    deck: [],
+    playerHand: [],
+    playerBooks: [],
+    opponents: [
+      { id: 'owl', name: 'OWL', fullName: 'VESPER THE OWL', hand: [], books: [], memory: new Set() },
+      { id: 'boar', name: 'BOAR', fullName: 'MIDAS THE BOAR', hand: [], books: [], memory: new Set() },
+      { id: 'dealer', name: 'DEALER', fullName: 'THE WOLF DEALER', hand: [], books: [], memory: new Set() },
+      { id: 'crow', name: 'CROW', fullName: 'SILAS THE CROW', hand: [], books: [], memory: new Set() }
+    ],
+    dealerMemory: new Set(),
+    selectedTargetId: 'crow',
+    selectedRank: null,
+    activeActorId: null,
+    spotlightTitle: '',
+    spotlightStory: '',
+    spotlightTip: 'In Go Fish, players ask each other for card numbers they already hold to collect sets of 4!',
+    statusMessage: 'SET YOUR MATCH STAKES & PRESS DEAL GO FISH',
+    dealerAnim: {
+      armExtend: 0,
+      revolverProgress: 0,
+      blinkTimer: 2.5,
+      isBlinking: false
+    },
+    introProgress: 0,
+    particles: [],
+    smokeWisps: [],
+    actionTimer: null
+  };
+
+  function getOpponent(id) {
+    return state.opponents.find(o => o.id === id);
+  }
+
+  function getActiveBankroll() {
+    return state.practiceMode ? state.practiceBankroll : state.bankroll;
+  }
+
+  function setActiveBankroll(val) {
+    if (state.practiceMode) {
+      state.practiceBankroll = Math.max(0, Math.round(val));
+    } else {
+      state.bankroll = Math.max(0, Math.round(val));
+    }
+  }
+
+  function formatMoney(amount) {
+    return '$' + Math.floor(amount).toLocaleString('en-US');
+  }
+
+  // ==========================================================================
+  // 4. DOM REFERENCES & RULES POPULATOR
+  // ==========================================================================
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const INTERNAL_W = 640;
+  const INTERNAL_H = 360;
+  canvas.width = INTERNAL_W;
+  canvas.height = INTERNAL_H;
+
+  const uiLayer = document.getElementById('ui-layer');
+  const titleScreen = document.getElementById('title-screen');
+  const rulesModal = document.getElementById('rules-modal');
+  const betweenModal = document.getElementById('between-round-modal');
+  const cashoutScreen = document.getElementById('cashout-screen');
+  const endingOverlay = document.getElementById('ending-overlay');
+  const endingCaption = document.getElementById('ending-caption');
+  const skipIntroBtn = document.getElementById('skip-intro-btn');
+  const practiceAdvisor = document.getElementById('practice-advisor');
+  const practiceAdviceText = document.getElementById('practice-advice-text');
+
+  const hudBankroll = document.getElementById('hud-bankroll');
+  const bankrollLabel = document.getElementById('bankroll-label');
+  const roundLabel = document.getElementById('round-label');
+  const hudPot = document.getElementById('hud-pot');
+  const hudToCall = document.getElementById('hud-tocall');
+  const playerHandRankEl = document.getElementById('player-hand-rank');
+
+  const opponentsTopRow = document.getElementById('opponents-top-row');
+  const playerHandZone = document.getElementById('player-hand-zone');
+  const opponentTurnSpotlight = document.getElementById('opponent-turn-spotlight');
+  const spotlightActorEl = document.getElementById('spotlight-actor');
+  const spotlightStoryEl = document.getElementById('spotlight-story');
+  const spotlightTipEl = document.getElementById('spotlight-tip');
+  const playerCardsRow = document.getElementById('player-cards-row');
+  const playerBooksPill = document.getElementById('player-books-pill');
+
+  const wagerControlsRow = document.getElementById('wager-controls-row');
+  const turnControlsRow = document.getElementById('turn-controls-row');
+  const btnStartMatch = document.getElementById('btn-start-match');
+  const btnClearBet = document.getElementById('btn-clear-bet');
+
+  function populateRulesModal() {
+    const list = document.getElementById('rankings-list');
+    const examples = [
+      {
+        name: 'GOAL: COLLECT 4 OF A KIND ("BOOKS")',
+        desc: 'Whenever you get all 4 cards of the same number (like four Kings), they automatically score as 1 Book!',
+        cards: ['K♠', 'K♥', 'K♦', 'K♣']
+      },
+      {
+        name: 'STEP 1: PICK A PLAYER & A NUMBER YOU HOLD',
+        desc: 'You can ONLY ask for a card number you already have in your own hand (for example, 7s).',
+        cards: ['7♠', '7♦', '7♣']
+      },
+      {
+        name: 'STEP 2: TAKE CARDS OR "GO FISH!"',
+        desc: 'If Crow has 7s, Crow gives them to you and you go again! If not, Crow says "Go Fish" and you draw 1 card from The Pond.',
+        cards: ['A♥', '9♠']
+      },
+      {
+        name: 'EVERYONE TAKES TURNS',
+        desc: 'Owl, Boar, Dealer, Crow, and You all play! Whoever has the most Books when all 13 sets are finished wins the pot.',
+        cards: ['Q♠', 'Q♥', 'Q♦', 'Q♣']
+      }
+    ];
+
+    if (list) {
+      list.innerHTML = examples.map(ex => `
+        <div class="rank-row">
+          <div>
+            <div class="rank-name">${ex.name}</div>
+            <div class="rank-desc">${ex.desc}</div>
+          </div>
+          <div class="mini-cards">
+            ${ex.cards.map(c => {
+              const isRed = c.includes('♥') || c.includes('♦');
+              return `<span class="mini-card ${isRed ? 'red' : ''}">${c}</span>`;
+            }).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+  populateRulesModal();
+
+  // ==========================================================================
+  // 5. STREAMLINED 5-PLAYER GO FISH GAMEPLAY ENGINE
+  // ==========================================================================
+  function clearActionTimer() {
+    if (state.actionTimer) {
+      clearTimeout(state.actionTimer);
+      state.actionTimer = null;
+    }
+  }
+
+  function startNewSession(practice = false) {
+    audio.resume();
+    audio.restoreMusic();
+    clearActionTimer();
+
+    state.practiceMode = practice;
+    if (practice) {
+      state.practiceBankroll = INITIAL_BANKROLL;
+    } else {
+      state.bankroll = INITIAL_BANKROLL;
+    }
+    state.matchNumber = 0;
+    state.wagerAmount = 100000;
+    resetMatchBoard();
+
+    const practiceBtn = document.getElementById('btn-hud-practice');
+    if (practice) {
+      practiceBtn.classList.add('active-practice');
+      practiceBtn.textContent = 'PRACTICE: ON';
+      bankrollLabel.textContent = 'PRACTICE CHIPS (NO RISK)';
+      hudBankroll.classList.remove('gold');
+      hudBankroll.classList.add('practice-tag');
+    } else {
+      practiceBtn.classList.remove('active-practice');
+      practiceBtn.textContent = 'PRACTICE';
+      bankrollLabel.textContent = 'YOUR BANKROLL';
+      hudBankroll.classList.add('gold');
+      hudBankroll.classList.remove('practice-tag');
+    }
+
+    titleScreen.classList.add('hidden');
+    betweenModal.classList.add('hidden');
+    cashoutScreen.classList.add('hidden');
+    endingOverlay.classList.add('hidden');
+    endingCaption.classList.remove('visible');
+
+    renderGoFishBoard();
+    updateHUD();
+
+    if (!practice) {
+      state.screen = 'INTRO';
+      state.introProgress = 0;
+      uiLayer.classList.add('hidden');
+      skipIntroBtn.classList.remove('hidden');
+    } else {
+      enterTableReady();
+    }
+  }
+
+  function resetMatchBoard() {
+    state.phase = 'WAGERING';
+    state.deck = createShuffledDeck();
+    state.playerHand = [];
+    state.playerBooks = [];
+    state.opponents.forEach(o => {
+      o.hand = [];
+      o.books = [];
+      o.memory.clear();
+    });
+    state.dealerMemory.clear();
+    state.selectedRank = null;
+    state.statusMessage = 'CHOOSE YOUR MATCH STAKES & PRESS DEAL GO FISH';
+  }
+
+  function finishIntro() {
+    if (state.screen !== 'INTRO') return;
+    skipIntroBtn.classList.add('hidden');
+    enterTableReady();
+  }
+
+  function enterTableReady() {
+    state.screen = 'PLAYING';
+    uiLayer.classList.remove('hidden');
+    skipIntroBtn.classList.add('hidden');
+    renderGoFishBoard();
+    updateHUD();
+  }
+
+  function startGoFishMatch() {
+    if (state.phase !== 'WAGERING' || state.screen !== 'PLAYING') return;
+    const bankroll = getActiveBankroll();
+
+    if (!state.practiceMode && bankroll < MIN_BET) {
+      triggerDarkEnding();
+      return;
+    }
+
+    const wager = Math.min(bankroll, Math.max(MIN_BET, state.wagerAmount));
+    state.wagerAmount = wager;
+    setActiveBankroll(bankroll - wager);
+
+    state.matchNumber++;
+    state.deck = createShuffledDeck();
+    state.playerHand = [];
+    state.playerBooks = [];
+    state.opponents.forEach(o => {
+      o.hand = [];
+      o.books = [];
+      o.memory.clear();
+    });
+    state.dealerMemory.clear();
+
+    // Deal 5 cards to player and each of the 4 opponents
+    for (let i = 0; i < 5; i++) {
+      state.playerHand.push(state.deck.pop());
+      state.opponents.forEach(o => o.hand.push(state.deck.pop()));
+    }
+    sortHand(state.playerHand);
+    state.opponents.forEach(o => sortHand(o.hand));
+
+    checkAndScoreBooks('PLAYER');
+    state.opponents.forEach(o => checkAndScoreBooks(o.id));
+
+    state.selectedRank = state.playerHand.length > 0 ? state.playerHand[0].rank : null;
+    state.phase = 'PLAYER_TURN';
+    state.statusMessage = 'YOUR TURN: CLICK A CARD RANK & ASK AN OPPONENT';
+
+    audio.playChipClink(3);
+    audio.playCardSnap(1.0);
+    renderGoFishBoard();
+    updateHUD();
+  }
+
+  function checkAndScoreBooks(who) {
+    const hand = who === 'PLAYER' ? state.playerHand : getOpponent(who).hand;
+    const books = who === 'PLAYER' ? state.playerBooks : getOpponent(who).books;
+    const counts = {};
+    hand.forEach(c => { counts[c.rank] = (counts[c.rank] || 0) + 1; });
+
+    let scoredNames = [];
+    for (const rStr of Object.keys(counts)) {
+      const rank = Number(rStr);
+      if (counts[rank] === 4) {
+        books.push(rank);
+        scoredNames.push(RANK_PLURALS[rank]);
+        for (let i = hand.length - 1; i >= 0; i--) {
+          if (hand[i].rank === rank) hand.splice(i, 1);
+        }
+      }
+    }
+    return scoredNames;
+  }
+
+  function ensureNonEmptyHand(who) {
+    const hand = who === 'PLAYER' ? state.playerHand : getOpponent(who).hand;
+    if (hand.length === 0 && state.deck.length > 0) {
+      hand.push(state.deck.pop());
+      sortHand(hand);
+      checkAndScoreBooks(who);
+    }
+  }
+
+  function isMatchFinished() {
+    const totalBooks = state.playerBooks.length + state.opponents.reduce((s, o) => s + o.books.length, 0);
+    const totalHandCards = state.playerHand.length + state.opponents.reduce((s, o) => s + o.hand.length, 0);
+    return totalBooks === 13 || (state.deck.length === 0 && totalHandCards === 0);
+  }
+
+  function playerAskOpponent(targetId, rank) {
+    if (state.phase !== 'PLAYER_TURN' || state.screen !== 'PLAYING') return;
+    if (!state.playerHand.some(c => c.rank === rank)) return;
+
+    const target = getOpponent(targetId);
+    if (!target) return;
+
+    state.selectedTargetId = targetId;
+    state.selectedRank = rank;
+    state.phase = 'BUSY';
+
+    const matching = target.hand.filter(c => c.rank === rank);
+    if (matching.length > 0) {
+      target.hand = target.hand.filter(c => c.rank !== rank);
+      state.playerHand.push(...matching);
+      sortHand(state.playerHand);
+      audio.playCardSnap(1.15);
+
+      const newBooks = checkAndScoreBooks('PLAYER');
+      ensureNonEmptyHand('PLAYER');
+      ensureNonEmptyHand(targetId);
+
+      const bookNote = newBooks.length > 0 ? ` — BOOK OF ${newBooks.join(', ')} SCORED!` : '';
+      state.statusMessage = `${target.fullName} HANDED OVER ${matching.length} ${RANK_PLURALS[rank]}!${bookNote} GO AGAIN!`;
+
+      if (state.playerHand.length > 0 && !state.playerHand.some(c => c.rank === state.selectedRank)) {
+        state.selectedRank = state.playerHand[0].rank;
+      }
+
+      renderGoFishBoard();
+      updateHUD();
+
+      if (isMatchFinished()) {
+        state.actionTimer = setTimeout(resolveGoFishMatch, 1100);
+      } else {
+        state.phase = 'PLAYER_TURN';
+        updateHUD();
+      }
+    } else {
+      // GO FISH! Draw 1 card from Pond
+      target.memory.add(rank);
+      state.statusMessage = `${target.fullName}: "NO ${RANK_PLURALS[rank]}. GO FISH!"`;
+      audio.playCardSnap(0.85);
+      updateHUD();
+
+      state.actionTimer = setTimeout(() => {
+        if (state.screen !== 'PLAYING') return;
+        let fishedMatch = false;
+        if (state.deck.length > 0) {
+          const drawn = state.deck.pop();
+          state.playerHand.push(drawn);
+          sortHand(state.playerHand);
+          audio.playCardSnap(1.05);
+          fishedMatch = drawn.rank === rank;
+
+          const newBooks = checkAndScoreBooks('PLAYER');
+          ensureNonEmptyHand('PLAYER');
+          const bookNote = newBooks.length > 0 ? ` & SCORED BOOK OF ${newBooks.join(', ')}!` : '';
+
+          if (fishedMatch) {
+            state.statusMessage = `YOU FISHED THE ${drawn.label}${SUIT_SYMBOLS[drawn.suit]} YOU ASKED FOR${bookNote} GO AGAIN!`;
+          } else {
+            state.statusMessage = `YOU FISHED ${drawn.label}${SUIT_SYMBOLS[drawn.suit]}${bookNote} TABLE TURNS START...`;
+          }
+        } else {
+          state.statusMessage = `THE POND IS EMPTY! TABLE TURNS START...`;
+        }
+
+        if (state.playerHand.length > 0 && !state.playerHand.some(c => c.rank === state.selectedRank)) {
+          state.selectedRank = state.playerHand[0].rank;
+        }
+
+        renderGoFishBoard();
+        updateHUD();
+
+        if (isMatchFinished()) {
+          state.actionTimer = setTimeout(resolveGoFishMatch, 1100);
+        } else if (fishedMatch) {
+          state.phase = 'PLAYER_TURN';
+          updateHUD();
+        } else {
+          state.actionTimer = setTimeout(() => runOpponentTurnsSequence(0), 1200);
+        }
+      }, 750);
+    }
+  }
+
+  function runOpponentTurnsSequence(oppIdx) {
+    if (state.screen !== 'PLAYING') return;
+    if (oppIdx >= state.opponents.length || isMatchFinished()) {
+      state.phase = 'PLAYER_TURN';
+      state.statusMessage = 'YOUR TURN: PICK A CARD RANK & ASK AN OPPONENT';
+      renderGoFishBoard();
+      updateHUD();
+      return;
+    }
+
+    const opp = state.opponents[oppIdx];
+    state.activeActorId = opp.id;
+    state.phase = 'OPPONENT_TURN';
+    ensureNonEmptyHand(opp.id);
+
+    if (opp.hand.length === 0) {
+      runOpponentTurnsSequence(oppIdx + 1);
+      return;
+    }
+
+    // Pick target other than self
+    const potentialTargets = [
+      { id: 'player', name: 'You' },
+      ...state.opponents.filter(o => o.id !== opp.id).map(o => ({ id: o.id, name: o.fullName }))
+    ];
+    const chosenTarget = potentialTargets[Math.floor(Math.random() * potentialTargets.length)];
+
+    // Pick rank from opp hand
+    let chosenRank = opp.hand[0].rank;
+    const remembered = opp.hand.find(c => opp.memory.has(c.rank));
+    if (remembered && Math.random() < 0.75) {
+      chosenRank = remembered.rank;
+      opp.memory.delete(chosenRank);
+    } else {
+      const randCard = opp.hand[Math.floor(Math.random() * opp.hand.length)];
+      chosenRank = randCard.rank;
+    }
+
+    state.spotlightTitle = `${opp.fullName}'S TURN`;
+    state.spotlightStory = `${opp.name} leans across the dark felt and asks ${chosenTarget.name} for any ${RANK_PLURALS[chosenRank]}...`;
+    renderGoFishBoard();
+    updateHUD();
+
+    state.actionTimer = setTimeout(() => {
+      if (state.screen !== 'PLAYING') return;
+
+      let gotCards = false;
+      let targetName = chosenTarget.name;
+
+      if (chosenTarget.id === 'player') {
+        const matching = state.playerHand.filter(c => c.rank === chosenRank);
+        if (matching.length > 0) {
+          gotCards = true;
+          state.playerHand = state.playerHand.filter(c => c.rank !== chosenRank);
+          opp.hand.push(...matching);
+          sortHand(opp.hand);
+          audio.playCardSnap(0.95);
+
+          const newBooks = checkAndScoreBooks(opp.id);
+          ensureNonEmptyHand('PLAYER');
+          ensureNonEmptyHand(opp.id);
+
+          const bookNote = newBooks.length > 0 ? ` & scored a Book of ${newBooks.join(', ')}!` : '';
+          state.spotlightStory = `${opp.name} took your ${matching.length} ${RANK_PLURALS[chosenRank]}${bookNote}`;
+        } else {
+          state.spotlightStory = `You told ${opp.name}: "Go Fish!"`;
+        }
+      } else {
+        const targetOpp = getOpponent(chosenTarget.id);
+        const matching = targetOpp.hand.filter(c => c.rank === chosenRank);
+        if (matching.length > 0) {
+          gotCards = true;
+          targetOpp.hand = targetOpp.hand.filter(c => c.rank !== chosenRank);
+          opp.hand.push(...matching);
+          sortHand(opp.hand);
+          audio.playCardSnap(0.92);
+
+          const newBooks = checkAndScoreBooks(opp.id);
+          ensureNonEmptyHand(chosenTarget.id);
+          ensureNonEmptyHand(opp.id);
+
+          const bookNote = newBooks.length > 0 ? ` & scored a Book!` : '';
+          state.spotlightStory = `${opp.name} took cards from ${targetOpp.name}${bookNote}`;
+        } else {
+          state.spotlightStory = `${targetOpp.name} said "Go Fish!" to ${opp.name}.`;
+        }
+      }
+
+      renderGoFishBoard();
+
+      state.actionTimer = setTimeout(() => {
+        if (state.screen !== 'PLAYING') return;
+        if (!gotCards && state.deck.length > 0) {
+          const drawn = state.deck.pop();
+          opp.hand.push(drawn);
+          sortHand(opp.hand);
+          const newBooks = checkAndScoreBooks(opp.id);
+          ensureNonEmptyHand(opp.id);
+          if (drawn.rank === chosenRank) {
+            state.spotlightStory = `${opp.name} fished the exact card they wanted and goes again!`;
+            renderGoFishBoard();
+            state.actionTimer = setTimeout(() => runOpponentTurnsSequence(oppIdx), 1300);
+            return;
+          }
+        }
+
+        if (isMatchFinished()) {
+          resolveGoFishMatch();
+        } else if (gotCards) {
+          state.actionTimer = setTimeout(() => runOpponentTurnsSequence(oppIdx), 1250);
+        } else {
+          state.actionTimer = setTimeout(() => runOpponentTurnsSequence(oppIdx + 1), 1250);
+        }
+      }, 1000);
+    }, 1200);
+  }
+
+  function resolveGoFishMatch() {
+    if (state.screen !== 'PLAYING') return;
+    state.activeActorId = null;
+    const pBooks = state.playerBooks.length;
+    let maxOppBooks = 0;
+    state.opponents.forEach(o => { if (o.books.length > maxOppBooks) maxOppBooks = o.books.length; });
+
+    const wager = state.wagerAmount;
+    let headline = '';
+
+    if (pBooks > maxOppBooks) {
+      setActiveBankroll(getActiveBankroll() + wager * 3);
+      headline = `YOU WIN WITH ${pBooks} BOOKS! YOU COLLECT ${formatMoney(wager * 2)} PROFIT!`;
+      audio.playChipClink(5);
+    } else if (maxOppBooks >= pBooks) {
+      headline = `THE HOUSE/OPPONENTS WON THE MATCH. YOU LOST ${formatMoney(wager)}.`;
+      audio.playCardSnap(0.75);
+    } else {
+      setActiveBankroll(getActiveBankroll() + wager);
+      headline = `MATCH TIED! YOUR ${formatMoney(wager)} WAGER IS RETURNED.`;
+      audio.playChipClink(2);
+    }
+
+    state.statusMessage = headline;
+    state.phase = 'WAGERING';
+    renderGoFishBoard();
+    updateHUD();
+
+    state.actionTimer = setTimeout(() => {
+      concludeMatch(headline);
+    }, 1400);
+  }
+
+  function concludeMatch(summaryMessage) {
+    const playerChips = getActiveBankroll();
+
+    if (!state.practiceMode && playerChips < MIN_BET) {
+      triggerDarkEnding();
+      return;
+    }
+
+    if (state.practiceMode && playerChips < MIN_BET) {
+      setActiveBankroll(INITIAL_BANKROLL);
+      summaryMessage += ' (Practice balance reset to $1,000,000.)';
+    }
+
+    if (state.wagerAmount > getActiveBankroll()) {
+      state.wagerAmount = Math.max(MIN_BET, getActiveBankroll());
+    }
+
+    state.screen = 'BETWEEN_ROUND';
+    document.getElementById('round-summary-title').textContent = state.practiceMode
+      ? `PRACTICE MATCH #${state.matchNumber} RESULT`
+      : `MATCH #${state.matchNumber} RESULT`;
+    document.getElementById('round-summary-text').textContent =
+      `${summaryMessage} Current bankroll: ${formatMoney(getActiveBankroll())}.`;
+    betweenModal.classList.remove('hidden');
+  }
+
+  function cashOutAndLeave() {
+    betweenModal.classList.add('hidden');
+    uiLayer.classList.add('hidden');
+    state.screen = 'CASHOUT';
+
+    const finalChips = getActiveBankroll();
+    const diff = finalChips - INITIAL_BANKROLL;
+    const diffStr = diff >= 0 ? `+${formatMoney(diff)}` : `-${formatMoney(Math.abs(diff))}`;
+
+    document.getElementById('cashout-title').textContent = state.practiceMode
+      ? 'PRACTICE SESSION ENDED'
+      : 'YOU CASHED OUT ALIVE';
+    document.getElementById('cashout-summary').textContent = state.practiceMode
+      ? `Practice finished. Your real $1,000,000 bankroll remains untouched.`
+      : `You step away from the table with ${formatMoney(finalChips)} (${diffStr} net) after ${state.matchNumber} match${state.matchNumber === 1 ? '' : 'es'}. The wolf dealer gives a single silent nod as you exit.`;
+    cashoutScreen.classList.remove('hidden');
+  }
+
+  function triggerDarkEnding() {
+    clearActionTimer();
+    state.screen = 'ENDING';
+    state.dealerAnim.revolverProgress = 0;
+    uiLayer.classList.add('hidden');
+    betweenModal.classList.add('hidden');
+    endingOverlay.classList.remove('hidden');
+    endingCaption.classList.remove('visible');
+
+    audio.triggerDarkEndingAudio();
+    setTimeout(() => audio.playMetallicClick(), 1800);
+    setTimeout(() => {
+      endingCaption.classList.add('visible');
+    }, 2600);
+  }
+
+  // ==========================================================================
+  // 6. HIGH-CONTRAST GO FISH BOARD & BIG CONTROLS RENDERING
+  // ==========================================================================
+  function createPlayerCardElement(card, rankCount) {
+    const isRed = card.suit === 'H' || card.suit === 'D';
+    const isSelected = state.selectedRank === card.rank;
+    const el = document.createElement('div');
+    el.className = `playing-card${isRed ? ' red' : ''}${isSelected ? ' selected-rank' : ''}`;
+    el.innerHTML = `
+      <div class="card-corner">
+        <span class="card-rank">${card.label}</span>
+        <span class="card-suit-small">${SUIT_SYMBOLS[card.suit]}</span>
+      </div>
+      <div class="card-center-suit">${SUIT_SYMBOLS[card.suit]}</div>
+      <span class="card-count-badge">${rankCount}/4</span>
+      <div class="card-corner bottom">
+        <span class="card-rank">${card.label}</span>
+        <span class="card-suit-small">${SUIT_SYMBOLS[card.suit]}</span>
+      </div>
+    `;
+    el.addEventListener('click', () => {
+      if (state.phase !== 'PLAYER_TURN') return;
+      state.selectedRank = card.rank;
+      audio.playCardSnap(1.1);
+      renderGoFishBoard();
+      updateHUD();
+    });
+    return el;
+  }
+
+  function renderGoFishBoard() {
+    opponentsTopRow.innerHTML = '';
+    state.opponents.forEach(opp => {
+      const box = document.createElement('div');
+      const isTarget = state.phase === 'PLAYER_TURN' && state.selectedTargetId === opp.id;
+      const isSpeaker = state.activeActorId === opp.id;
+      box.className = `hand-zone opponent-seat${isTarget ? ' selected-target' : ''}${isSpeaker ? ' active-speaker' : ''}`;
+      box.innerHTML = `
+        <div class="hand-zone-header">
+          <span class="zone-title ${opp.id === 'dealer' ? 'banker-accent' : ''}">${opp.name}</span>
+          <span class="score-pill">${opp.books.length} BOOKS</span>
+        </div>
+        <div class="opp-meta">${opp.hand.length} CARDS IN HAND</div>
+      `;
+      box.addEventListener('click', () => {
+        if (state.phase !== 'PLAYER_TURN') return;
+        state.selectedTargetId = opp.id;
+        audio.playCardSnap(1.05);
+        renderGoFishBoard();
+        updateHUD();
+      });
+      opponentsTopRow.appendChild(box);
+    });
+
+    const pondBox = document.createElement('div');
+    pondBox.className = 'hand-zone pond-box';
+    pondBox.innerHTML = `
+      <span class="zone-title">THE POND</span>
+      <div class="pond-count-big">${state.deck.length}</div>
+      <div class="pond-sub">CARDS LEFT</div>
+    `;
+    opponentsTopRow.appendChild(pondBox);
+
+    if (state.phase === 'OPPONENT_TURN') {
+      playerHandZone.classList.add('closed-window');
+      opponentTurnSpotlight.classList.add('visible');
+      spotlightActorEl.textContent = state.spotlightTitle;
+      spotlightStoryEl.textContent = state.spotlightStory;
+      spotlightTipEl.textContent = state.spotlightTip;
+    } else {
+      playerHandZone.classList.remove('closed-window');
+      opponentTurnSpotlight.classList.remove('visible');
+
+      const rankCounts = {};
+      state.playerHand.forEach(c => { rankCounts[c.rank] = (rankCounts[c.rank] || 0) + 1; });
+
+      playerCardsRow.innerHTML = '';
+      if (state.playerHand.length === 0) {
+        playerCardsRow.innerHTML = '<span style="font-family:Silkscreen,monospace;font-size:14px;color:#8cb2ff;">PRESS DEAL GO FISH BELOW TO START</span>';
+      } else {
+        state.playerHand.forEach(c => {
+          playerCardsRow.appendChild(createPlayerCardElement(c, rankCounts[c.rank]));
+        });
+      }
+      playerBooksPill.textContent = `YOUR BOOKS: ${state.playerBooks.length}`;
+    }
+  }
+
+  function updateHUD() {
+    const bankroll = getActiveBankroll();
+    const totalBooks = state.playerBooks.length + state.opponents.reduce((s, o) => s + o.books.length, 0);
+    hudBankroll.textContent = formatMoney(bankroll);
+    roundLabel.textContent = `${state.practiceMode ? 'PRACTICE ' : ''}MATCH #${Math.max(1, state.matchNumber)} • 5-PLAYER GO FISH`;
+    hudPot.textContent = `STAKES: ${formatMoney(state.wagerAmount)}`;
+    hudToCall.textContent = `YOUR BOOKS: ${state.playerBooks.length} (${totalBooks}/13 DONE)`;
+    playerHandRankEl.textContent = state.statusMessage;
+
+    if (state.phase === 'WAGERING') {
+      wagerControlsRow.classList.remove('hidden');
+      turnControlsRow.classList.add('hidden');
+      btnStartMatch.disabled = bankroll < MIN_BET;
+      btnStartMatch.textContent = `DEAL GO FISH (${formatMoney(state.wagerAmount)})`;
+      btnClearBet.disabled = false;
+      document.querySelectorAll('.chip-preset').forEach(b => { b.disabled = false; });
+    } else if (state.phase === 'OPPONENT_TURN') {
+      wagerControlsRow.classList.add('hidden');
+      turnControlsRow.classList.remove('hidden');
+      turnControlsRow.innerHTML = `<span style="font-family:Silkscreen,monospace;font-size:14px;color:#ffe39e;padding:8px 14px;">WATCHING TABLE TURN — YOUR HAND OPENS NEXT</span>`;
+    } else {
+      wagerControlsRow.classList.add('hidden');
+      turnControlsRow.classList.remove('hidden');
+      turnControlsRow.innerHTML = '';
+
+      const step1Row = document.createElement('div');
+      step1Row.className = 'turn-step-row';
+      step1Row.innerHTML = `<span class="step-tag">1. WHO TO ASK:</span>`;
+      state.opponents.forEach(opp => {
+        const tBtn = document.createElement('button');
+        tBtn.className = `target-pick-btn${state.selectedTargetId === opp.id ? ' active-pick' : ''}`;
+        tBtn.textContent = `${opp.name} (${opp.hand.length})`;
+        tBtn.disabled = state.phase !== 'PLAYER_TURN';
+        tBtn.addEventListener('click', () => {
+          state.selectedTargetId = opp.id;
+          renderGoFishBoard();
+          updateHUD();
+        });
+        step1Row.appendChild(tBtn);
+      });
+      turnControlsRow.appendChild(step1Row);
+
+      const step2Row = document.createElement('div');
+      step2Row.className = 'turn-step-row';
+      step2Row.innerHTML = `<span class="step-tag">2. YOUR CARD NUMBER:</span>`;
+
+      const uniqueRanks = [...new Set(state.playerHand.map(c => c.rank))];
+      uniqueRanks.forEach(r => {
+        const btn = document.createElement('button');
+        btn.className = `rank-ask-btn${state.selectedRank === r ? ' active-pick' : ''}`;
+        btn.textContent = RANK_NAMES[r];
+        btn.disabled = state.phase !== 'PLAYER_TURN';
+        btn.addEventListener('click', () => {
+          state.selectedRank = r;
+          renderGoFishBoard();
+          updateHUD();
+        });
+        step2Row.appendChild(btn);
+      });
+
+      const targetObj = getOpponent(state.selectedTargetId);
+      const askBtn = document.createElement('button');
+      askBtn.className = 'poker-btn primary';
+      askBtn.disabled = state.phase !== 'PLAYER_TURN' || !state.selectedRank || !targetObj;
+      askBtn.textContent = (state.selectedRank && targetObj)
+        ? `ASK ${targetObj.name} FOR ${RANK_PLURALS[state.selectedRank]}`
+        : 'PICK PLAYER & CARD';
+      askBtn.addEventListener('click', () => {
+        if (state.selectedRank && targetObj) playerAskOpponent(targetObj.id, state.selectedRank);
+      });
+      step2Row.appendChild(askBtn);
+      turnControlsRow.appendChild(step2Row);
+    }
+
+    if (state.practiceMode && state.screen === 'PLAYING') {
+      practiceAdvisor.style.display = 'block';
+      if (state.phase === 'WAGERING') {
+        practiceAdviceText.textContent = 'Beginner Tip: Set any wager and press DEAL GO FISH. Practice mode never risks your $1,000,000!';
+      } else if (state.phase === 'OPPONENT_TURN') {
+        practiceAdviceText.textContent = 'Beginner Tip: Pay attention to what numbers other players ask for—that tells you what cards they hold!';
+      } else if (state.selectedRank) {
+        const count = state.playerHand.filter(c => c.rank === state.selectedRank).length;
+        practiceAdviceText.textContent = `Beginner Tip: You have ${count} of ${RANK_PLURALS[state.selectedRank]}. You need ${4 - count} more to complete a Book!`;
+      }
+    } else {
+      practiceAdvisor.style.display = 'none';
+    }
+  }
+
+  // ==========================================================================
+  // 7. PIXEL-ART CANVAS RENDERER — CLEARER CHARACTERS BEHIND THE TABLE
+  // ==========================================================================
+  function initAtmosphereParticles() {
+    state.particles = [];
+    for (let i = 0; i < 24; i++) {
+      state.particles.push({
+        x: 170 + Math.random() * 300,
+        y: 35 + Math.random() * 210,
+        vx: (Math.random() - 0.5) * 0.11,
+        vy: -0.04 - Math.random() * 0.1,
+        alpha: 0.14 + Math.random() * 0.35
+      });
+    }
+    state.smokeWisps = [];
+    for (let i = 0; i < 10; i++) {
+      state.smokeWisps.push({
+        x: 244 + Math.random() * 6,
+        y: 94 - i * 6,
+        phase: Math.random() * Math.PI * 2
+      });
+    }
+  }
+  initAtmosphereParticles();
+
+  function drawPixelRect(x, y, w, h, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+  }
+
+  function renderScene(timeSec) {
+    drawPixelRect(0, 0, INTERNAL_W, INTERNAL_H, '#040917');
+    drawPixelRect(0, 0, INTERNAL_W, 175, '#060d21');
+    for (let x = 16; x < INTERNAL_W; x += 64) {
+      drawPixelRect(x, 18, 48, 128, '#091430');
+      drawPixelRect(x + 2, 20, 44, 124, '#060e24');
+    }
+
+    [76, 564].forEach(wx => {
+      drawPixelRect(wx - 20, 26, 40, 82, '#0a1636');
+      drawPixelRect(wx - 17, 29, 34, 76, '#0f214d');
+      ctx.fillStyle = 'rgba(120, 165, 245, 0.18)';
+      for (let r = 0; r < 5; r++) {
+        const ry = 33 + ((timeSec * 40 + r * 17) % 64);
+        ctx.fillRect(wx - 11 + r * 5, Math.round(ry), 1, 5);
+      }
+    });
+
+    drawOwlCharacter(PARLOR_PLAYERS[0], timeSec);
+    drawBoarCharacter(PARLOR_PLAYERS[1], timeSec);
+    drawWolfDealer(PARLOR_PLAYERS[2], timeSec);
+    drawRavenCharacter(PARLOR_PLAYERS[3], timeSec);
+
+    const backShadow = ctx.createLinearGradient(0, 12, 0, 178);
+    backShadow.addColorStop(0, 'rgba(2, 5, 14, 0.72)');
+    backShadow.addColorStop(0.65, 'rgba(2, 5, 14, 0.56)');
+    backShadow.addColorStop(1, 'rgba(2, 5, 14, 0.14)');
+    ctx.fillStyle = backShadow;
+    ctx.fillRect(0, 0, INTERNAL_W, 178);
+
+    drawCasinoTable();
+    drawOverheadLighting(timeSec);
+    drawChipRackAndWager();
+
+    if (state.screen === 'ENDING') {
+      drawDealerRevolver();
+    }
+
+    drawAtmosphereEffects(timeSec);
+
+    const roomVignette = ctx.createRadialGradient(320, 195, 115, 320, 190, 355);
+    roomVignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    roomVignette.addColorStop(0.68, 'rgba(2, 5, 14, 0.34)');
+    roomVignette.addColorStop(1, 'rgba(1, 3, 9, 0.84)');
+    ctx.fillStyle = roomVignette;
+    ctx.fillRect(0, 0, INTERNAL_W, INTERNAL_H);
+
+    if (state.screen === 'INTRO') {
+      drawIntroCinematic();
+    }
+  }
+
+  function drawWolfDealer(ai, t) {
+    const cx = ai.seatX;
+    const cy = ai.seatY;
+    const breathe = Math.sin(t * 1.6) * 1;
+    const y = cy + breathe;
+    const isSpeaking = state.activeActorId === ai.id;
+
+    drawPixelRect(cx - 26, y + 18, 52, 48, '#090f1f');
+    drawPixelRect(cx - 24, y + 20, 48, 44, '#0f1830');
+    drawPixelRect(cx - 6, y + 20, 12, 22, '#9fb0cf');
+    drawPixelRect(cx - 2, y + 22, 4, 18, '#6e1926');
+
+    drawPixelRect(cx - 15, y - 20, 5, 12, '#28344f');
+    drawPixelRect(cx + 9, y - 20, 5, 12, '#28344f');
+    drawPixelRect(cx - 14, y - 10, 28, 26, '#32405e');
+    drawPixelRect(cx - 14, y - 10, 28, 12, '#111729');
+
+    if (!ai.isBlinking) {
+      drawPixelRect(cx - 10, y - 1, 4, 2, isSpeaking ? '#ffe39e' : '#b8c9eb');
+      drawPixelRect(cx + 3, y - 1, 4, 2, isSpeaking ? '#ffe39e' : '#b8c9eb');
+      drawPixelRect(cx - 10, y - 1, 2, 2, '#0a0f1c');
+      drawPixelRect(cx + 3, y - 1, 2, 2, '#0a0f1c');
+    }
+
+    drawPixelRect(cx - 10, y + 4, 14, 9, '#495b80');
+    drawPixelRect(cx - 10, y + 4, 5, 3, '#080c17');
+
+    const reach = state.dealerAnim.armExtend * 10;
+    drawPixelRect(cx - 26, y + 34 + reach, 8, 7, '#b5c4e3');
+  }
+
+  function drawOwlCharacter(ai, t) {
+    const bob = Math.sin(t * 1.3) * 1;
+    const x = ai.seatX;
+    const y = ai.seatY + bob;
+    const isSpeaking = state.activeActorId === ai.id;
+
+    drawPixelRect(x - 22, y + 12, 44, 44, '#0b1224');
+    drawPixelRect(x - 13, y - 11, 26, 23, '#1f2a47');
+    drawPixelRect(x - 9, y - 6, 19, 16, '#334266');
+    drawPixelRect(x - 13, y - 11, 26, 9, '#0d1426');
+
+    if (!ai.isBlinking) {
+      drawPixelRect(x - 4, y - 1, 4, 3, isSpeaking ? '#ffe39e' : '#c79b3e');
+      drawPixelRect(x + 5, y - 1, 4, 3, isSpeaking ? '#ffe39e' : '#c79b3e');
+    }
+    drawPixelRect(x + 1, y + 3, 4, 4, '#9c7025');
+  }
+
+  function drawBoarCharacter(ai, t) {
+    const bob = Math.cos(t * 1.2) * 1;
+    const x = ai.seatX;
+    const y = ai.seatY + bob;
+    const isSpeaking = state.activeActorId === ai.id;
+
+    drawPixelRect(x - 25, y + 11, 50, 44, '#0e1224');
+    drawPixelRect(x - 15, y - 11, 30, 23, '#2d273b');
+    drawPixelRect(x - 15, y - 11, 30, 9, '#110f1c');
+    if (!ai.isBlinking) {
+      drawPixelRect(x - 4, y - 1, 3, 2, isSpeaking ? '#ffe39e' : '#b8c4db');
+      drawPixelRect(x + 6, y - 1, 3, 2, isSpeaking ? '#ffe39e' : '#b8c4db');
+    }
+    drawPixelRect(x - 4, y + 2, 12, 8, '#423854');
+    drawPixelRect(x - 7, y + 4, 3, 5, '#bfb59f');
+    drawPixelRect(x + 8, y + 4, 3, 5, '#bfb59f');
+    drawPixelRect(x + 15, y + 7, 3, 2, '#d94e28');
+  }
+
+  function drawRavenCharacter(ai, t) {
+    const bob = Math.sin(t * 1.5 + 1.0) * 1;
+    const x = ai.seatX;
+    const y = ai.seatY + bob;
+    const isSpeaking = state.activeActorId === ai.id;
+
+    drawPixelRect(x - 22, y + 12, 44, 44, '#0a1021');
+    drawPixelRect(x - 12, y - 11, 24, 23, '#16203b');
+    drawPixelRect(x - 12, y - 11, 24, 8, '#0b101f');
+    if (!ai.isBlinking) {
+      drawPixelRect(x - 8, y - 1, 4, 2, isSpeaking ? '#ffe39e' : '#5e96cc');
+      drawPixelRect(x + 1, y - 1, 4, 2, isSpeaking ? '#ffe39e' : '#5e96cc');
+    }
+    drawPixelRect(x - 15, y + 2, 12, 5, '#2b3a5c');
+  }
+
+  function drawCasinoTable() {
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(320, 232, 282, 108, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#24110f';
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#3b1d19';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.ellipse(320, 232, 268, 98, 0, 0, Math.PI * 2);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#9e7a34';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.ellipse(320, 232, 264, 95, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#0b2b2f';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.ellipse(320, 230, 205, 68, 0, 0, Math.PI * 2);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(212, 175, 92, 0.28)';
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawOverheadLighting(t) {
+    const flicker = 0.96 + Math.sin(t * 8.7) * 0.02 + Math.cos(t * 3.9) * 0.02;
+
+    drawPixelRect(318, 0, 4, 16, '#141e38');
+    drawPixelRect(298, 16, 44, 7, '#1b294a');
+    drawPixelRect(304, 23, 32, 2, '#f2c96b');
+
+    ctx.save();
+    const grad = ctx.createRadialGradient(320, 175, 20, 320, 185, 250);
+    grad.addColorStop(0, `rgba(255, 226, 160, ${0.18 * flicker})`);
+    grad.addColorStop(0.55, `rgba(74, 132, 224, ${0.09 * flicker})`);
+    grad.addColorStop(1, 'rgba(2, 4, 10, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(302, 25);
+    ctx.lineTo(338, 25);
+    ctx.lineTo(565, 315);
+    ctx.lineTo(75, 315);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawChipRackAndWager() {
+    drawPixelRect(282, 138, 76, 10, '#10182b');
+    const trayColors = ['#b8283b', '#2658b8', '#228a59', '#d49f35', '#8834b5'];
+    trayColors.forEach((col, i) => {
+      drawPixelRect(286 + i * 14, 140, 11, 6, col);
+    });
+
+    if (state.wagerAmount > 0 && state.screen === 'PLAYING') {
+      const stacks = Math.min(6, Math.max(1, Math.ceil(state.wagerAmount / 50000)));
+      for (let s = 0; s < stacks; s++) {
+        const sx = 300 + (s % 3) * 14;
+        const sy = 286 + Math.floor(s / 3) * 8;
+        const hCount = Math.min(6, 2 + Math.floor(state.wagerAmount / 80000));
+        for (let h = 0; h < hCount; h++) {
+          drawPixelRect(sx, sy - h * 2, 10, 3, h % 2 === 0 ? '#f2c96b' : '#2d68d6');
+        }
+      }
+    }
+  }
+
+  function drawDealerRevolver() {
+    state.dealerAnim.revolverProgress = Math.min(1, state.dealerAnim.revolverProgress + 0.015);
+    const p = state.dealerAnim.revolverProgress;
+    const rx = 304;
+    const ry = 148 + p * 28;
+
+    ctx.save();
+    const spot = ctx.createRadialGradient(320, 178, 10, 320, 178, 125);
+    spot.addColorStop(0, 'rgba(215, 55, 72, 0.24)');
+    spot.addColorStop(1, 'rgba(0, 0, 0, 0.82)');
+    ctx.fillStyle = spot;
+    ctx.fillRect(0, 0, INTERNAL_W, INTERNAL_H);
+    ctx.restore();
+
+    drawPixelRect(rx, ry + 5, 7, 10, '#47261c');
+    drawPixelRect(rx + 5, ry + 3, 13, 6, '#65799c');
+    drawPixelRect(rx + 8, ry + 4, 6, 4, '#9ab0d9');
+    drawPixelRect(rx + 18, ry + 3, 16, 4, '#798eb5');
+    drawPixelRect(rx + 18, ry + 3, 16, 1, '#d6e5ff');
+  }
+
+  function drawAtmosphereEffects(t) {
+    state.particles.forEach(pt => {
+      pt.x += pt.vx + Math.sin(t + pt.y * 0.05) * 0.04;
+      pt.y += pt.vy;
+      if (pt.y < 28) {
+        pt.y = 225;
+        pt.x = 170 + Math.random() * 300;
+      }
+      ctx.fillStyle = `rgba(205, 226, 255, ${pt.alpha * 0.75})`;
+      ctx.fillRect(Math.round(pt.x), Math.round(pt.y), 1, 1);
+    });
+
+    state.smokeWisps.forEach(w => {
+      w.y -= 0.14;
+      w.phase += 0.04;
+      if (w.y < 34) w.y = 108;
+      const sx = 246 + Math.sin(w.phase) * 4;
+      ctx.fillStyle = 'rgba(175, 198, 238, 0.14)';
+      ctx.fillRect(Math.round(sx), Math.round(w.y), 2, 2);
+    });
+  }
+
+  function drawIntroCinematic() {
+    const p = Math.min(1, state.introProgress);
+    const darkness = Math.max(0, 1 - p * 1.4);
+
+    if (darkness > 0) {
+      ctx.fillStyle = `rgba(1, 3, 9, ${darkness})`;
+      ctx.fillRect(0, 0, INTERNAL_W, INTERNAL_H);
+    }
+
+    const barH = Math.round(36 * (1 - p * 0.6));
+    drawPixelRect(0, 0, INTERNAL_W, barH, '#010206');
+    drawPixelRect(0, INTERNAL_H - barH, INTERNAL_W, barH, '#010206');
+
+    ctx.font = '11px "Silkscreen", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = `rgba(224, 236, 255, ${Math.sin(p * Math.PI)})`;
+    const caption = p < 0.5
+      ? 'YOU STEP INTO THE NAVY-LIT PARLOR...'
+      : 'THE WOLF DEALER SHUFFLES THE DECK. TAKE YOUR SEAT.';
+    ctx.fillText(caption, 320, 315);
+  }
+
+  // ==========================================================================
+  // 8. MAIN ANIMATION LOOP & EVENT LISTENERS
+  // ==========================================================================
+  let lastTimestamp = 0;
+
+  function gameLoop(timestamp) {
+    const dt = Math.min(0.1, (timestamp - lastTimestamp) / 1000 || 0.016);
+    lastTimestamp = timestamp;
+    const timeSec = timestamp / 1000;
+
+    state.dealerAnim.armExtend = Math.max(0, state.dealerAnim.armExtend - dt * 2.5);
+    state.dealerAnim.blinkTimer -= dt;
+    if (state.dealerAnim.blinkTimer <= 0) {
+      state.dealerAnim.isBlinking = !state.dealerAnim.isBlinking;
+      state.dealerAnim.blinkTimer = state.dealerAnim.isBlinking ? 0.14 : (2.4 + Math.random() * 3.0);
+    }
+
+    PARLOR_PLAYERS.forEach(p => {
+      p.blinkTimer -= dt;
+      if (p.blinkTimer <= 0) {
+        p.isBlinking = !p.isBlinking;
+        p.blinkTimer = p.isBlinking ? 0.14 : (2.0 + Math.random() * 3.5);
+      }
+    });
+
+    if (state.screen === 'INTRO') {
+      state.introProgress += dt * 0.34;
+      if (state.introProgress >= 1) {
+        finishIntro();
+      }
+    }
+
+    renderScene(timeSec);
+    requestAnimationFrame(gameLoop);
+  }
+
+  canvas.addEventListener('click', () => {
+    audio.resume();
+    if (state.screen === 'INTRO') {
+      finishIntro();
+    }
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      rulesModal.classList.add('hidden');
+      return;
+    }
+    if (state.screen === 'INTRO' && (e.code === 'Space' || e.key === 'Enter')) {
+      e.preventDefault();
+      finishIntro();
+      return;
+    }
+    if (state.screen === 'PLAYING' && (e.code === 'Space' || e.key === 'Enter')) {
+      e.preventDefault();
+      if (state.phase === 'WAGERING') {
+        startGoFishMatch();
+      } else if (state.phase === 'PLAYER_TURN' && state.selectedRank && state.selectedTargetId) {
+        playerAskOpponent(state.selectedTargetId, state.selectedRank);
+      }
+    }
+  });
+
+  document.getElementById('btn-start-game').addEventListener('click', () => startNewSession(false));
+  document.getElementById('btn-start-practice').addEventListener('click', () => startNewSession(true));
+  document.getElementById('btn-open-rules').addEventListener('click', () => {
+    audio.resume();
+    rulesModal.classList.remove('hidden');
+  });
+  document.getElementById('btn-hud-rules').addEventListener('click', () => {
+    audio.resume();
+    rulesModal.classList.remove('hidden');
+  });
+  document.getElementById('btn-close-rules').addEventListener('click', () => {
+    rulesModal.classList.add('hidden');
+  });
+
+  document.getElementById('btn-audio-toggle').addEventListener('click', (e) => {
+    const isOn = audio.toggleMute();
+    e.target.textContent = isOn ? 'SOUND: ON' : 'SOUND: OFF';
+  });
+
+  document.getElementById('btn-hud-practice').addEventListener('click', () => {
+    startNewSession(!state.practiceMode);
+  });
+
+  document.getElementById('btn-hud-menu').addEventListener('click', () => {
+    clearActionTimer();
+    audio.restoreMusic();
+    state.screen = 'TITLE';
+    uiLayer.classList.add('hidden');
+    betweenModal.classList.add('hidden');
+    cashoutScreen.classList.add('hidden');
+    endingOverlay.classList.add('hidden');
+    skipIntroBtn.classList.add('hidden');
+    titleScreen.classList.remove('hidden');
+  });
+
+  skipIntroBtn.addEventListener('click', finishIntro);
+
+  document.querySelectorAll('.chip-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (state.phase !== 'WAGERING') return;
+      const bankroll = getActiveBankroll();
+      if (btn.dataset.preset === 'allin') {
+        state.wagerAmount = Math.max(MIN_BET, bankroll);
+        audio.playChipClink(3);
+      } else if (btn.dataset.add) {
+        const add = Number(btn.dataset.add);
+        state.wagerAmount = Math.min(bankroll, state.wagerAmount + add);
+        audio.playChipClink(1);
+      }
+      updateHUD();
+    });
+  });
+
+  btnClearBet.addEventListener('click', () => {
+    if (state.phase !== 'WAGERING') return;
+    state.wagerAmount = Math.min(getActiveBankroll(), MIN_BET);
+    audio.playCardSnap(0.9);
+    updateHUD();
+  });
+
+  btnStartMatch.addEventListener('click', startGoFishMatch);
+
+  document.getElementById('btn-next-hand').addEventListener('click', () => {
+    betweenModal.classList.add('hidden');
+    state.screen = 'PLAYING';
+    resetMatchBoard();
+    renderGoFishBoard();
+    updateHUD();
+  });
+
+  document.getElementById('btn-cash-out').addEventListener('click', cashOutAndLeave);
+  document.getElementById('btn-play-again-cashout').addEventListener('click', () => startNewSession(false));
+  document.getElementById('btn-title-cashout').addEventListener('click', () => {
+    cashoutScreen.classList.add('hidden');
+    titleScreen.classList.remove('hidden');
+    state.screen = 'TITLE';
+  });
+
+  document.getElementById('btn-restart-ending').addEventListener('click', () => startNewSession(false));
+
+  window.onload = function () {
+    requestAnimationFrame(gameLoop);
+  };
+})();
+</script>
+</body>
+</html>
